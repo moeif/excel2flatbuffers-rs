@@ -1,0 +1,7 @@
+/target
+Cargo.lock
+/excels
+/test_excel
+/output_fbs
+/common
+.vscode/
