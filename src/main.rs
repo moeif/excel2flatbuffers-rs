@@ -1,34 +1,88 @@
-
 use std::time::Instant;
 // use excel2flatbuffers_rs::UnlockLvConfig_generated;
 // use excel2flatbuffers_rs::file_filter;
 // use std::path::PathBuf;
+use excel2flatbuffers_rs::data::RawTable;
 use excel2flatbuffers_rs::file_filter;
-use excel2flatbuffers_rs::data::{RawTable};
 // use std::io;
 // use std::io::prelude::*;
 // use std::fs::File;
 use excel2flatbuffers_rs::fbs2code;
 
 extern crate flatbuffers;
-use std::thread;
 use std::fs;
+use std::thread;
 
-fn main() -> Result<(), std::io::Error>{
-    
-    
-    let excel_dir = "./common/excels/";
-    let fbs_dir = "./common/fbs/";
-    let data_dir = "./common/data_output/";
-    let target_lan_code_dir = "./common/csharp_output/";
-    let target_lan = "csharp";
-    // let rust_code_dir = "./common/rust_output/";
+extern crate clap;
+use clap::{App, Arg};
+
+fn main() -> Result<(), std::io::Error> {
+    let matches = App::new("My Super Program")
+        .version("1.0")
+        .author("Kevin K. <kbknapp@gmail.com>")
+        .about("Does awesome things")
+        .arg(
+            Arg::with_name("lang")
+                .short("lang")
+                .long("lang")
+                .value_name("lang")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("excel")
+                .short("excel")
+                .long("excel")
+                .value_name("excel")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("fbs")
+                .short("fbs")
+                .long("fbs")
+                .value_name("fbs")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("bytes")
+                .short("bytes")
+                .long("bytes")
+                .value_name("bytes")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("code")
+                .short("code")
+                .long("code")
+                .value_name("code")
+                .takes_value(true),
+        )
+        .get_matches();
+
+    // Gets a value for config if supplied by user, or defaults to "default.conf"
+    let lang = matches.value_of("lang").unwrap_or("csharp");
+    let fbs_dir = matches.value_of("fbs").unwrap_or("./common/fbs/");
+    let bytes_dir = matches.value_of("bytes").unwrap_or("./common/data_output/");
+    let excel_dir = matches.value_of("excel").unwrap_or("./common/excels/");
+    let lang_code_dir = String::from(
+        matches
+            .value_of("code")
+            .unwrap_or("./common/csharp_output/"),
+    );
+
+    // =================================================
+
+    // let excel_dir = "./common/excels/";
+    // let fbs_dir = "./common/fbs/";
+    // let data_dir = "./common/data_output/";
+    // let target_lan_code_dir = "./common/csharp_output/";
+    // let target_lan = "csharp";
+    // // let rust_code_dir = "./common/rust_output/";
     let file_identifier = Some("WHAT");
 
     // Create Directories
     fs::create_dir_all(fbs_dir)?;
-    fs::create_dir_all(data_dir)?;
-    fs::create_dir_all(csharp_code_dir)?;
+    fs::create_dir_all(bytes_dir)?;
+    fs::create_dir_all(lang_code_dir)?;
 
     // fbs2code::generate(fbs_dir, rust_code_dir, "rust")?;
 
@@ -57,8 +111,6 @@ fn main() -> Result<(), std::io::Error>{
     // let s1 = "haha".to_string();
     // let s2 = "haha".to_string();
 
-    
-
     let now = Instant::now();
     let excel_path_vec = file_filter::get_all_files(excel_dir, "xlsx", false);
     // let mut table_vec: Vec<RawTable> = Vec::new();
@@ -73,7 +125,6 @@ fn main() -> Result<(), std::io::Error>{
     //     table.write_to_fbs_file(fbs_dir)?;
     // }
     // println!("Write to fbs: {}", now.elapsed().as_secs_f32());
-
 
     // let now = Instant::now();
     // for table in table_vec.iter(){
@@ -93,16 +144,14 @@ fn main() -> Result<(), std::io::Error>{
     //     let _ = child.join();
     // }
 
-
-
     let mut thread_vec = Vec::new();
 
-    for excel_file in excel_path_vec.iter(){
+    for excel_file in excel_path_vec.iter() {
         let excel_path = String::from(excel_file.to_str().unwrap());
-        thread_vec.push(thread::spawn(move ||{
+        thread_vec.push(thread::spawn(move || {
             let table = RawTable::new(&excel_path);
             table.write_to_fbs_file(fbs_dir).unwrap();
-            table.pack_data(data_dir, file_identifier).unwrap();
+            table.pack_data(bytes_dir, file_identifier).unwrap();
         }));
     }
 
@@ -111,14 +160,10 @@ fn main() -> Result<(), std::io::Error>{
     }
     println!("Read Write Pack: {}", now.elapsed().as_secs_f32());
 
-
     let now = Instant::now();
-    fbs2code::generate(fbs_dir, target_lan_code_dir, target_lan)?;
+    fbs2code::generate(&fbs_dir, &lang_code_dir, lang)?;
     println!("Genrate Target Code: {}", now.elapsed().as_secs_f32());
 
-
-    
-   
     // ==================================================================
 
     // // =============================== Generate Use Code ==================
@@ -127,7 +172,6 @@ fn main() -> Result<(), std::io::Error>{
     //    let start = builder.start_table();
     //    builder.push_slot::<i32>(4, 10101, 0);
     //    builder.push_slot::<i32>(6, 3, 0);
-      
     //    builder.push_slot_always::<flatbuffers::WIPOffset<_>>(8, name_vec);
     //    builder.push_slot::<f32>(10, 100.1, 0.0);
 
@@ -138,7 +182,6 @@ fn main() -> Result<(), std::io::Error>{
     //    let start = builder.start_table();
     //    builder.push_slot::<i32>(4, 10102, 0);
     //    builder.push_slot::<i32>(6, 5, 0);
-       
     //    builder.push_slot_always::<flatbuffers::WIPOffset<_>>(8, name_vec);
     //    builder.push_slot::<f32>(10, 100.2, 0.0);
     //    let o2 = builder.end_table(start);
@@ -154,9 +197,8 @@ fn main() -> Result<(), std::io::Error>{
     //     let mut writer: Box<dyn std::io::Write> = Box::new(BufWriter::new(std::fs::File::create("data.dat")?));
     //     writer.write_all(&buf);
 
-
     //    let feature1 = UnlockLvConfig_generated::SingleUnlockLvConfigData::create(
-    //        &mut builder, 
+    //        &mut builder,
     //        &UnlockLvConfig_generated::SingleUnlockLvConfigDataArgs{
     //            ID: 10101,
     //            LevelLimit: 3,
@@ -164,15 +206,13 @@ fn main() -> Result<(), std::io::Error>{
     //        });
 
     //     let feature2 = UnlockLvConfig_generated::SingleUnlockLvConfigData::create(
-    //      &mut builder, 
+    //      &mut builder,
     //      &UnlockLvConfig_generated::SingleUnlockLvConfigDataArgs{
     //          ID: 10102,
     //          LevelLimit: 5,
     //      });
 
-
     //     let data = builder.create_vector(&[feature1, feature2]);
-        
     //     let config = UnlockLvConfig_generated::UnlockLvConfig::create(
     //         &mut builder,
     //         &UnlockLvConfig_generated::UnlockLvConfigArgs{
@@ -182,60 +222,53 @@ fn main() -> Result<(), std::io::Error>{
     //     builder.finish(config, None);
     //     let buf = builder.finished_data();
 
-        // dbg!(buf, buf.len());
+    // dbg!(buf, buf.len());
 
     // ====================================================================
 
-        // let path = "./flatbuffers";
-        // let output_path = "./src";
-        // fbs2code::generate(path, output_path, "rust");
-
+    // let path = "./flatbuffers";
+    // let output_path = "./src";
+    // fbs2code::generate(path, output_path, "rust");
 
     // ========================== Load Test =====================================
-        // let mut f = std::fs::File::open("./common/data_output/UnlockLvConfig.bytes")?;
-        // let mut buf = Vec::new();
-        // f.read_to_end(&mut buf)?;
-        // let config = UnlockLvConfig_generated::get_root_as_unlock_lv_config(&buf[..]);
+    // let mut f = std::fs::File::open("./common/data_output/UnlockLvConfig.bytes")?;
+    // let mut buf = Vec::new();
+    // f.read_to_end(&mut buf)?;
+    // let config = UnlockLvConfig_generated::get_root_as_unlock_lv_config(&buf[..]);
 
+    // // let config = UnlockLvConfig_generated::get_root_as_unlock_lv_config(buf);
+    // let datas = config.data().unwrap();
+    // for data in datas {
+    //     let id = data.ID();
+    //     let level_limited = data.LevelLimit();
+    //     // let name = data.Name().unwrap();
+    //     // let speed = data.Speed();
+    //     dbg!(id, level_limited);
+    // }
 
-        // // let config = UnlockLvConfig_generated::get_root_as_unlock_lv_config(buf);
-        // let datas = config.data().unwrap();
-        // for data in datas {
-        //     let id = data.ID();
-        //     let level_limited = data.LevelLimit();
-        //     // let name = data.Name().unwrap();
-        //     // let speed = data.Speed();
-        //     dbg!(id, level_limited);
-        // }
-
-        // Ok(())
+    // Ok(())
     // ==========================================================================
 
-    
-    
     // ========================== Lua Test =====================================
-   
     // lua_exec::exec();
 
     // =========================================================================
 
-
     // ========================== Pack data =====================================
 
-        // let spath = "./excels/";
-        // let file_paths = file_filter::get_all_files(spath, false);
-        // // let excel_path = "./test_excel/Test.xlsx";
-        // let output_path = "./output_fbs/";
-        // for file_path in file_paths {
-        //     let excel_path = file_path.to_str().unwrap();
-        //     process_excel(excel_path, output_path)?;
-        // }
+    // let spath = "./excels/";
+    // let file_paths = file_filter::get_all_files(spath, false);
+    // // let excel_path = "./test_excel/Test.xlsx";
+    // let output_path = "./output_fbs/";
+    // for file_path in file_paths {
+    //     let excel_path = file_path.to_str().unwrap();
+    //     process_excel(excel_path, output_path)?;
+    // }
 
-        // println!("{}", now.elapsed().as_secs());
-        // println!("Generate Down!");
+    // println!("{}", now.elapsed().as_secs());
+    // println!("Generate Down!");
 
-        // Ok(())
-        
+    // Ok(())
     // ==========================================================================
 
     Ok(())

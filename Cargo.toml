@@ -11,5 +11,6 @@ calamine = "0.16.1"
 flatbuffers = "0.6.1"
 flatc-rust = { git = "https://github.com/frol/flatc-rust" }
 rlua = "0.17.0"
+clap = "2.33.3"
 # flexbuffers = "0.1.0"
 
