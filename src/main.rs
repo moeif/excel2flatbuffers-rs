@@ -12,6 +12,7 @@ use excel2flatbuffers_rs::fbs2code;
 
 extern crate flatbuffers;
 use std::thread;
+use std::fs;
 
 fn main() -> Result<(), std::io::Error>{
     
@@ -19,9 +20,15 @@ fn main() -> Result<(), std::io::Error>{
     let excel_dir = "./common/excels/";
     let fbs_dir = "./common/fbs/";
     let data_dir = "./common/data_output/";
-    let csharp_code_dir = "./common/csharp_output/";
+    let target_lan_code_dir = "./common/csharp_output/";
+    let target_lan = "csharp";
     // let rust_code_dir = "./common/rust_output/";
     let file_identifier = Some("WHAT");
+
+    // Create Directories
+    fs::create_dir_all(fbs_dir)?;
+    fs::create_dir_all(data_dir)?;
+    fs::create_dir_all(csharp_code_dir)?;
 
     // fbs2code::generate(fbs_dir, rust_code_dir, "rust")?;
 
@@ -106,7 +113,7 @@ fn main() -> Result<(), std::io::Error>{
 
 
     let now = Instant::now();
-    fbs2code::generate(fbs_dir, csharp_code_dir, "csharp")?;
+    fbs2code::generate(fbs_dir, target_lan_code_dir, target_lan)?;
     println!("Genrate Target Code: {}", now.elapsed().as_secs_f32());
 
 
