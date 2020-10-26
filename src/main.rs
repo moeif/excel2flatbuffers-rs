@@ -70,6 +70,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let file_identifier = Some("WHAT");
 
+
     // Create Directories
     fs::create_dir_all(fbs_dir)?;
     fs::create_dir_all(bytes_dir)?;
