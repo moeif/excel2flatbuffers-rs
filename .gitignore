@@ -5,3 +5,4 @@ Cargo.lock
 /output_fbs
 /common
 .vscode/
+*.DS_Store
