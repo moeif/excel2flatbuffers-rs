@@ -1,10 +1,10 @@
 use calamine::{open_workbook, Reader, Xlsx};
+use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::fmt;
 extern crate flatbuffers;
-use flatbuffers::{WIPOffset, TableFinishedWIPOffset};
-use std::io::{Write, BufWriter};
+use flatbuffers::{TableFinishedWIPOffset, WIPOffset};
+use std::io::{BufWriter, Write};
 
 #[derive(Debug)]
 enum DataValue<'fbb> {
@@ -37,7 +37,12 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn new(cell_index: usize, name: String, data_type: TableDataType, is_comment: bool) -> Self {
+    pub fn new(
+        cell_index: usize,
+        name: String,
+        data_type: TableDataType,
+        is_comment: bool,
+    ) -> Self {
         Header {
             cell_index,
             name,
@@ -65,32 +70,38 @@ impl Header {
     }
 }
 
-
 #[derive(Debug)]
 pub struct RawSheet {
-    pub sheet_name: String,       // sheet name
+    pub sheet_name: String, // sheet name
     pub data: Vec<Vec<String>>,
     pub header: Vec<Header>,
 }
 
 impl RawSheet {
     pub fn new(sheet_name: String, data: Vec<Vec<String>>) -> Self {
-        if let Some(header_row) = data.get(0){
+        if let Some(header_row) = data.get(0) {
             let header = RawSheet::parse_header(header_row);
-            Self { sheet_name, data, header}
-        }
-        else{
+            Self {
+                sheet_name,
+                data,
+                header,
+            }
+        } else {
             panic!("解析Header失败: {}", sheet_name);
         }
     }
 
-    pub fn pack_data(&self, output_dir: &str, file_identifier: Option<&str>) -> Result<(), std::io::Error>{
+    pub fn pack_data(
+        &self,
+        output_dir: &str,
+        file_identifier: Option<&str>,
+    ) -> Result<(), std::io::Error> {
         let file_path = format!("{}{}.bytes", output_dir, self.sheet_name);
         //println!("Handle Sheet: {:?}", self.sheet_name);
         let mut row_data_vec: Vec<WIPOffset<TableFinishedWIPOffset>> = Vec::new();
         let mut builder = flatbuffers::FlatBufferBuilder::new();
         for i in 1..self.data.len() {
-            if let Some(row) = self.data.get(i){
+            if let Some(row) = self.data.get(i) {
                 let row_data = self.pack_row(&mut builder, row);
                 row_data_vec.push(row_data);
             }
@@ -103,35 +114,38 @@ impl RawSheet {
         builder.finish(o, file_identifier);
         let buf = builder.finished_data();
 
-        let mut writer: Box<dyn std::io::Write> = 
+        let mut writer: Box<dyn std::io::Write> =
             Box::new(BufWriter::new(fs::File::create(file_path)?));
         writer.write_all(&buf)?;
 
         Ok(())
     }
 
-    fn pack_row(&self, builder: &mut flatbuffers::FlatBufferBuilder, row: &[String]) -> 
-    WIPOffset<TableFinishedWIPOffset>{
+    fn pack_row(
+        &self,
+        builder: &mut flatbuffers::FlatBufferBuilder,
+        row: &[String],
+    ) -> WIPOffset<TableFinishedWIPOffset> {
         let mut value_vec: Vec<DataValue> = Vec::new();
 
         // 解析一行中的值
         for i in 0..row.len() {
-            if let Some(header_field) = self.header.get(i){
+            if let Some(header_field) = self.header.get(i) {
                 if !header_field.is_comment {
-                    if let Some(svalue) = row.get(i){
+                    if let Some(svalue) = row.get(i) {
                         let data_value = match header_field.data_type {
                             TableDataType::int => {
                                 DataValue::Int(svalue.parse::<i32>().unwrap_or(0))
-                            },
+                            }
                             TableDataType::float => {
                                 DataValue::Float(svalue.parse::<f32>().unwrap_or(0.0))
-                            },
+                            }
                             TableDataType::long => {
                                 DataValue::Int(svalue.parse::<i32>().unwrap_or(0))
-                            },
+                            }
                             TableDataType::string => {
                                 DataValue::FString(builder.create_string(svalue))
-                            },
+                            }
                         };
                         value_vec.push(data_value);
                     }
@@ -141,14 +155,14 @@ impl RawSheet {
 
         let start = builder.start_table();
         let mut offset = 4;
-        for dvalue in value_vec.iter(){
+        for dvalue in value_vec.iter() {
             match dvalue {
                 DataValue::Int(value) => {
                     builder.push_slot::<i32>(offset, *value, 0);
-                },
+                }
                 DataValue::Float(value) => {
                     builder.push_slot::<f32>(offset, *value, 0.0);
-                },
+                }
                 DataValue::FString(value) => {
                     builder.push_slot_always::<flatbuffers::WIPOffset<_>>(offset, *value);
                 }
@@ -159,44 +173,47 @@ impl RawSheet {
         builder.end_table(start)
     }
 
-    fn parse_header(header_row: &[String]) -> Vec<Header>{
+    fn parse_header(header_row: &[String]) -> Vec<Header> {
         let mut header_vec: Vec<Header> = Vec::new();
         let mut cell_index: usize = 0;
-        for field in header_row{
+        for field in header_row {
             if field.starts_with('#') {
                 header_vec.push(Header::new_comment(cell_index));
-            }else{
-                let field_split_vec: Vec<&str> = field.split('|').filter(|word| !word.trim().is_empty()).collect();
+            } else {
+                let field_split_vec: Vec<&str> = field
+                    .split('|')
+                    .filter(|word| !word.trim().is_empty())
+                    .collect();
                 if field_split_vec.len() == 2 {
                     let real_data = field_split_vec[1];
                     let data_vec: Vec<&str> = real_data.split('(').collect();
-                    if data_vec.len() >= 2{
+                    if data_vec.len() >= 2 {
                         let field_name = String::from(data_vec[0]);
                         let data_type_part = data_vec[1].trim().to_lowercase();
-                        let data_type = if data_type_part.contains("int32"){
+                        let data_type = if data_type_part.contains("int32") {
                             TableDataType::int
-                        }else if data_type_part.contains("string") {
+                        } else if data_type_part.contains("string") {
                             TableDataType::string
-                        }else if data_type_part.contains("float"){
+                        } else if data_type_part.contains("float") {
                             TableDataType::float
-                        }else{
+                        } else {
                             panic!("Unknow data type: {}", data_type_part);
                         };
                         header_vec.push(Header::new_normal(cell_index, field_name, data_type));
-                    }else{
+                    } else {
                         panic!("field error: {}", real_data);
                     }
-                }else{
+                } else {
                     header_vec.push(Header::new_comment(cell_index));
                     // panic!("field error: {}", field);
                 }
             }
             cell_index += 1;
         }
-    
+
         header_vec
     }
-    
+
     pub fn generate_fbs_code(&self) -> String {
         let table_code_str = format!(
             "
@@ -205,22 +222,32 @@ table {} {{
 }}
 
 root_type {};
-            ", self.sheet_name, self.sheet_name, self.sheet_name);
+            ",
+            self.sheet_name, self.sheet_name, self.sheet_name
+        );
 
         let mut variables_code = String::new();
         for header in self.header.iter() {
             if !header.is_comment {
-                let code = format!("    {}:{};\n", header.name, header.data_type.to_string().to_lowercase());
+                let code = format!(
+                    "    {}:{};\n",
+                    header.name,
+                    header.data_type.to_string().to_lowercase()
+                );
                 variables_code.push_str(&code);
             }
         }
 
         let single_table_code_str = format!(
             "
+namespace AutoGenConfig;
+
 table Single{}Data {{
 {}
 }}
-            ", self.sheet_name, variables_code);
+            ",
+            self.sheet_name, variables_code
+        );
 
         let mut fbs_code = String::new();
         fbs_code.push_str(&single_table_code_str);
@@ -293,9 +320,13 @@ impl RawTable {
         Ok(())
     }
 
-    pub fn pack_data(&self, output_dir: &str, file_identifier: Option<&str>) -> Result<(), std::io::Error>{
+    pub fn pack_data(
+        &self,
+        output_dir: &str,
+        file_identifier: Option<&str>,
+    ) -> Result<(), std::io::Error> {
         //println!("Pack Data, ExcelPath:{:?}", self.excel_path);
-        for sheet in self.sheets.iter(){
+        for sheet in self.sheets.iter() {
             sheet.pack_data(output_dir, file_identifier)?;
         }
         Ok(())
