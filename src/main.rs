@@ -56,20 +56,26 @@ fn main() -> Result<(), std::io::Error> {
                 .value_name("code")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("namespace")
+                .short("namespace")
+                .long("namespace")
+                .value_name("namespace")
+                .takes_value(true),
+        )
         .get_matches();
 
     // Gets a value for config if supplied by user, or defaults to "default.conf"
-    let lang  = matches.value_of("lang").unwrap_or("csharp");
+    let namespace = matches.value_of("namespace").unwrap_or("");
+    let lang = matches.value_of("lang").unwrap_or("csharp");
     let fbs_dir = matches.value_of("fbs").unwrap_or("./common/fbs/");
     let bytes_dir = matches.value_of("bytes").unwrap_or("./common/data_output/");
     let excel_dir = matches.value_of("excel").unwrap_or("./common/excels/");
-    let lang_code_dir = 
-        matches
-            .value_of("code")
-            .unwrap_or("./common/csharp_output/");
+    let lang_code_dir = matches
+        .value_of("code")
+        .unwrap_or("./common/csharp_output/");
 
     let file_identifier = Some("WHAT");
-
 
     // Create Directories
     fs::create_dir_all(fbs_dir)?;
@@ -87,8 +93,9 @@ fn main() -> Result<(), std::io::Error> {
         let excel_path = String::from(excel_file.to_str().unwrap());
         let fbs_path = String::from(fbs_dir);
         let bytes_path = String::from(bytes_dir);
+        let fbs_namespace = String::from(namespace);
         thread_vec.push(thread::spawn(move || {
-            let table = RawTable::new(&excel_path);
+            let table = RawTable::new(&excel_path, &fbs_namespace);
             table.write_to_fbs_file(&fbs_path).unwrap();
             table.pack_data(&bytes_path, file_identifier).unwrap();
         }));
@@ -104,6 +111,6 @@ fn main() -> Result<(), std::io::Error> {
     // Generate Bytes file
     fbs2code::generate(&fbs_dir, &lang_code_dir, &lang)?;
     println!("Genrate Target Code: {}", now.elapsed().as_secs_f32());
-  
+
     Ok(())
 }

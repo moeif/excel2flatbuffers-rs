@@ -75,16 +75,18 @@ pub struct RawSheet {
     pub sheet_name: String, // sheet name
     pub data: Vec<Vec<String>>,
     pub header: Vec<Header>,
+    pub namespace: String,
 }
 
 impl RawSheet {
-    pub fn new(sheet_name: String, data: Vec<Vec<String>>) -> Self {
+    pub fn new(sheet_name: String, data: Vec<Vec<String>>, namespace: &str) -> Self {
         if let Some(header_row) = data.get(0) {
             let header = RawSheet::parse_header(header_row);
             Self {
                 sheet_name,
                 data,
                 header,
+                namespace: String::from(namespace),
             }
         } else {
             panic!("解析Header失败: {}", sheet_name);
@@ -240,14 +242,22 @@ root_type {};
 
         let single_table_code_str = format!(
             "
-namespace AutoGenConfig;
-
 table Single{}Data {{
 {}
 }}
             ",
             self.sheet_name, variables_code
         );
+
+        println!("Namespace: {}", self.namespace);
+
+        let single_table_code_str = if self.namespace != "" {
+            format!("namespace {};\n{}", self.namespace, single_table_code_str)
+        } else {
+            single_table_code_str
+        };
+
+        println!("single_table_code: \n{}", single_table_code_str);
 
         let mut fbs_code = String::new();
         fbs_code.push_str(&single_table_code_str);
@@ -277,8 +287,8 @@ pub struct RawTable {
 }
 
 impl RawTable {
-    pub fn new(excel_path: &str) -> Self {
-        let sheet_vec = RawTable::read_excel(excel_path);
+    pub fn new(excel_path: &str, namespace: &str) -> Self {
+        let sheet_vec = RawTable::read_excel(excel_path, namespace);
         let path = String::from(excel_path);
         Self {
             excel_path: path,
@@ -286,7 +296,7 @@ impl RawTable {
         }
     }
 
-    fn read_excel(excel_path: &str) -> Vec<RawSheet> {
+    fn read_excel(excel_path: &str, namespace: &str) -> Vec<RawSheet> {
         let mut workbook: Xlsx<_> = open_workbook(excel_path).unwrap();
         let sheets = workbook.sheet_names().to_owned();
 
@@ -303,7 +313,7 @@ impl RawTable {
                     row_vec.push(vec);
                 }
                 // let excel_name = String::from(excel_path);
-                sheet_vec.push(RawSheet::new(sheet, row_vec));
+                sheet_vec.push(RawSheet::new(sheet, row_vec, namespace));
             } else {
                 eprintln!("Error with sheet: {0}", sheet);
             }
