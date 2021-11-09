@@ -68,24 +68,45 @@ fn main() -> Result<(), std::io::Error> {
     // Gets a value for config if supplied by user, or defaults to "default.conf"
     let namespace = matches.value_of("namespace").unwrap_or("");
     let lang = matches.value_of("lang").unwrap_or("csharp");
-    let fbs_dir = matches.value_of("fbs").unwrap_or("./common/fbs/");
-    let bytes_dir = matches.value_of("bytes").unwrap_or("./common/data_output/");
-    let excel_dir = matches.value_of("excel").unwrap_or("./common/excels/");
-    let lang_code_dir = matches
-        .value_of("code")
-        .unwrap_or("./common/csharp_output/");
-
-    let file_identifier = Some("WHAT");
+    let fbs_dir = matches.value_of("fbs").unwrap_or(""); //" ./common/fbs/"
+    let bytes_dir = matches.value_of("bytes").unwrap_or(""); // "./common/data_output/"
+    let excel_dir = matches.value_of("excel").unwrap_or(""); // "./common/excels/"
+    let lang_code_dir = matches.value_of("code").unwrap_or(""); // "./common/csharp_output/"
 
     // Create Directories
-    fs::create_dir_all(fbs_dir)?;
-    fs::create_dir_all(bytes_dir)?;
-    fs::create_dir_all(lang_code_dir)?;
+    if fbs_dir != "" {
+        fs::create_dir_all(fbs_dir)?;
+    }
+
+    if bytes_dir != "" {
+        fs::create_dir_all(bytes_dir)?;
+    }
+
+    if lang_code_dir != "" {
+        fs::create_dir_all(lang_code_dir)?;
+    }
+
+    if excel_dir != "" && fbs_dir != "" && bytes_dir != "" && lang_code_dir != "" {
+        process_excel_and_fbs_things(excel_dir, fbs_dir, bytes_dir, namespace);
+    }
 
     let now = Instant::now();
+    // Generate Bytes file
+    if fbs_dir != "" && lang_code_dir != "" && lang != "" {
+        fbs2code::generate(&fbs_dir, &lang_code_dir, &lang)?;
+    } else {
+        println!("ERROR: 确实必要参数，无法执行生成!");
+    }
+    println!("Genrate Target Code: {}", now.elapsed().as_secs_f32());
+
+    Ok(())
+}
+
+fn process_excel_and_fbs_things(excel_dir: &str, fbs_dir: &str, bytes_dir: &str, namespace: &str) {
+    let file_identifier = Some("WHAT");
 
     // Get all excels
-    let excel_path_vec = file_filter::get_all_files(&excel_dir, "xlsx", false);
+    let excel_path_vec = file_filter::get_all_files(excel_dir, "xlsx", false);
 
     // Start thread to process every excel
     let mut thread_vec = Vec::new();
@@ -105,12 +126,4 @@ fn main() -> Result<(), std::io::Error> {
     for child in thread_vec {
         let _ = child.join();
     }
-    println!("Read Write Pack: {}", now.elapsed().as_secs_f32());
-
-    let now = Instant::now();
-    // Generate Bytes file
-    fbs2code::generate(&fbs_dir, &lang_code_dir, &lang)?;
-    println!("Genrate Target Code: {}", now.elapsed().as_secs_f32());
-
-    Ok(())
 }
