@@ -16,7 +16,15 @@ fn fetch_files_path(path: &Path, extension: &str, recursive: bool, path_vec: &mu
             }
         } else if let Some(ext) = path.extension(){
             if ext.to_str() == Some(extension){
-                path_vec.push(path);
+                if let Some(file_name) = path.file_name(){
+                    if let Some(file_name_str) = file_name.to_str() {
+                        if !file_name_str.starts_with("~") {
+                            path_vec.push(path);
+                        }else{
+                            println!("IGNORE: {:?}", file_name);
+                        }
+                    }
+                }
             }
         }
     }

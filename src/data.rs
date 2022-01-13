@@ -287,17 +287,20 @@ pub struct RawTable {
 }
 
 impl RawTable {
-    pub fn new(excel_path: &str, namespace: &str) -> Self {
-        let sheet_vec = RawTable::read_excel(excel_path, namespace);
+    pub fn new(excel_path: &str, namespace: &str) -> Option<Self> {
+        if let Some(sheet_vec) = RawTable::read_excel(excel_path, namespace){
         let path = String::from(excel_path);
-        Self {
+        Some(Self {
             excel_path: path,
             sheets: sheet_vec,
-        }
+        })
+    }else{
+        None
+    }
     }
 
-    fn read_excel(excel_path: &str, namespace: &str) -> Vec<RawSheet> {
-        let mut workbook: Xlsx<_> = open_workbook(excel_path).unwrap();
+    fn read_excel(excel_path: &str, namespace: &str) -> Option<Vec<RawSheet>> {
+        if let Ok(mut workbook) = open_workbook::<Xlsx<_>, &str>(excel_path) {
         let sheets = workbook.sheet_names().to_owned();
 
         let mut sheet_vec: Vec<RawSheet> = Vec::new();
@@ -319,7 +322,10 @@ impl RawTable {
             }
         }
 
-        sheet_vec
+        Some(sheet_vec)
+    }else{
+        None
+    }
     }
 
     pub fn write_to_fbs_file(&self, output_dir: &str) -> Result<(), std::io::Error> {

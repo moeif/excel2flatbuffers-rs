@@ -6,6 +6,7 @@ use crate::file_filter;
 extern crate flatc_rust;
 
 fn _generate(output_path: &str, path_array: &[&Path], lang: &str) -> Result<(), std::io::Error> {
+    println!("Gen Code: {}", output_path);
     flatc_rust::run(flatc_rust::Args {
         lang,  // `rust` is the default, but let's be explicit
         inputs: path_array,// &[Path::new("./flatbuffers/monster.fbs")],

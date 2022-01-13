@@ -116,9 +116,12 @@ fn process_excel_and_fbs_things(excel_dir: &str, fbs_dir: &str, bytes_dir: &str,
         let bytes_path = String::from(bytes_dir);
         let fbs_namespace = String::from(namespace);
         thread_vec.push(thread::spawn(move || {
-            let table = RawTable::new(&excel_path, &fbs_namespace);
-            table.write_to_fbs_file(&fbs_path).unwrap();
-            table.pack_data(&bytes_path, file_identifier).unwrap();
+            if let Some(table) = RawTable::new(&excel_path, &fbs_namespace) {
+                table.write_to_fbs_file(&fbs_path).unwrap();
+                table.pack_data(&bytes_path, file_identifier).unwrap();
+            }else{
+                println!("ERROR: {0}", excel_path);
+            }
         }));
     }
 
